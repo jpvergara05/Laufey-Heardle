@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Laufey Heardle</title>
+
+<!-- Fonts: Playfair Display (jazz elegance) + DM Sans (clean body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+<!-- Load the song data -->
+<script src="laufey%20songs/songs.js"></script>
+
+<style>
+  /* ── Palette ─────────────────────────────────────────────────
+     Inspired by Laufey's album art: blush rose, dusty sage,
+     warm ivory, soft charcoal, and a muted gold accent.
+  ───────────────────────────────────────────────────────────── */
+  :root {
+    --ivory:      #F5EFE6;
+    --blush:      #D4A9A1;
+    --rose:       #B97A72;
+    --sage:       #8FA68E;
+    --sage-light: #C2D4C0;
+    --charcoal:   #2E2A26;
+    --warm-grey:  #7A726A;
+    --gold:       #C4A96B;
+    --gold-light: #E8D5A3;
+    --card-bg:    #FFFAF5;
+    --shadow:     rgba(46,42,38,.13);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--ivory);
+    color: var(--charcoal);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 1rem 4rem;
+    /* subtle linen texture */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23F5EFE6'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23EDE6DB' opacity='.6'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23EDE6DB' opacity='.6'/%3E%3C/svg%3E");
+  }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  header {
+    text-align: center;
+    margin-bottom: 2.2rem;
+  }
+  .logo-eyebrow {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    letter-spacing: .35em;
+    text-transform: uppercase;
+    font-size: .7rem;
+    color: var(--warm-grey);
+    margin-bottom: .35rem;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+    font-weight: 400;
+    color: var(--charcoal);
+    line-height: 1;
+    letter-spacing: -.01em;
+  }
+  header h1 em {
+    font-style: italic;
+    color: var(--rose);
+  }
+  .subtitle {
+    margin-top: .55rem;
+    font-size: .82rem;
+    color: var(--warm-grey);
+    letter-spacing: .06em;
+    font-weight: 300;
+  }
+
+  /* ── Main card ───────────────────────────────────────────── */
+  .card {
+    background: var(--card-bg);
+    border-radius: 2.4rem;
+    box-shadow: 0 8px 40px var(--shadow);
+    padding: 2.2rem 2rem 2rem;
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    overflow: visible;
+  }
+  /* decorative corner flourish */
+  .card::before {
+    content: '♩';
+    position: absolute;
+    top: 1rem; right: 1.4rem;
+    font-size: 1.5rem;
+    color: var(--gold-light);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ── Attempt pips ────────────────────────────────────────── */
+  .attempt-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .pip {
+    display: flex;
+    align-items: center;
+    gap: .28rem;
+    background: var(--ivory);
+    border: 1.5px solid var(--sage-light);
+    border-radius: 999px;
+    padding: .22rem .7rem .22rem .5rem;
+    font-size: .7rem;
+    font-weight: 500;
+    color: var(--warm-grey);
+    transition: background .3s, border-color .3s, color .3s;
+    white-space: nowrap;
+  }
+  .pip .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--sage-light);
+    flex-shrink: 0;
+    transition: background .3s;
+  }
+  .pip.active {
+    background: var(--sage-light);
+    border-color: var(--sage);
+    color: var(--charcoal);
+    font-weight: 600;
+  }
+  .pip.active .dot { background: var(--sage); }
+  .pip.wrong {
+    background: #F2DADA;
+    border-color: var(--rose);
+    color: var(--rose);
+  }
+  .pip.wrong .dot { background: var(--rose); }
+  .pip.skipped {
+    background: #EDE0D0;
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .pip.skipped .dot { background: var(--gold); }
+  .pip.correct {
+    background: #D8EADA;
+    border-color: var(--sage);
+    color: #4A7A50;
+  }
+  .pip.correct .dot { background: #4A7A50; }
+
+  /* ── Player section ──────────────────────────────────────── */
+  .player-section {
+    display: flex;
+    flex-direction: column;
+    gap: .9rem;
+  }
+
+  /* play button */
+  .play-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    background: var(--charcoal);
+    color: var(--ivory);
+    border: none;
+    border-radius: 999px;
+    padding: .75rem 2rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .88rem;
+    font-weight: 500;
+    letter-spacing: .05em;
+    cursor: pointer;
+    transition: background .2s, transform .12s;
+    align-self: flex-start;
+  }
+  .play-btn:hover { background: var(--rose); transform: translateY(-1px); }
+  .play-btn:active { transform: scale(.97); }
+  .play-btn .icon { font-size: 1rem; line-height: 1; }
+
+  /* progress bar container */
+  .progress-wrap {
+    position: relative;
+    height: 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 2px;
+  }
+  /* track */
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    background: var(--sage-light);
+    border-radius: 999px;
+    overflow: visible;
+    position: relative;
+    cursor: pointer;
+  }
+  /* filled portion */
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--rose) 0%, var(--gold) 100%);
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.05s linear;
+    position: relative;
+  }
+  /* thumb */
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: -6px; top: 50%;
+    transform: translateY(-50%);
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--rose);
+    box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 4.5px var(--rose);
+  }
+  /* time markers */
+  .markers {
+    position: absolute;
+    top: 50%; left: 2px; right: 2px;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .marker {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transform: translateX(-50%);
+  }
+  .marker-tick {
+    width: 2px;
+    height: 14px;
+    background: var(--warm-grey);
+    border-radius: 1px;
+    opacity: .35;
+  }
+  /* special markers glow when reached */
+  .marker.lit .marker-tick { opacity: .8; background: var(--rose); }
+  .marker-label {
+    font-size: .58rem;
+    color: var(--warm-grey);
+    font-weight: 500;
+    letter-spacing: .03em;
+    position: absolute;
+    top: 16px;
+    white-space: nowrap;
+  }
+  .marker.lit .marker-label { color: var(--rose); }
+
+  /* time display */
+  .time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: .7rem;
+    color: var(--warm-grey);
+    padding: 0 2px;
+    margin-top: .15rem;
+  }
+
+  /* ── Limit indicator ─────────────────────────────────────── */
+  .limit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .72rem;
+    color: var(--warm-grey);
+    background: var(--ivory);
+    border: 1.5px solid var(--gold-light);
+    border-radius: 999px;
+    padding: .18rem .75rem;
+    font-weight: 400;
+    align-self: flex-start;
+  }
+  .limit-badge strong { color: var(--charcoal); font-weight: 600; }
+
+  /* ── Skip button ─────────────────────────────────────────── */
+  .skip-btn {
+    background: none;
+    border: 1.5px dashed var(--blush);
+    border-radius: 999px;
+    padding: .55rem 1.4rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: .78rem;
+    color: var(--warm-grey);
+    cursor: pointer;
+    transition: border-color .2s, color .2s, background .2s;
+    align-self: flex-start;
+    font-style: italic;
+  }
+  .skip-btn:hover {
+    border-color: var(--rose);
+    color: var(--rose);
+    background: #FDF3F2;
+  }
+
+  /* ── Guess section ───────────────────────────────────────── */
+  .guess-section {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    position: relative;
+  }
+  .guess-input-wrap {
+    position: relative;
+    width: 100%;
+  }
+  .guess-input {
+    width: 100%;
+    padding: .72rem 1.2rem;
+    border-radius: 999px;
+    border: 2px solid var(--sage-light);
+    background: var(--ivory);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .88rem;
+    color: var(--charcoal);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    cursor: pointer;
+  }
+  .guess-input:focus, .guess-input.open {
+    border-color: var(--sage);
+    box-shadow: 0 0 0 3px rgba(143,166,142,.18);
+  }
+  .guess-input::placeholder { color: var(--blush); }
+  .guess-input:read-only { cursor: pointer; }
+
+  /* Dropdown */
+  .dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: var(--card-bg);
+    border: 1.5px solid var(--sage-light);
+    border-radius: 1.4rem;
+    box-shadow: 0 10px 36px var(--shadow);
+    overflow-y: auto;
+    max-height: 250px;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    padding: .4rem 0;
+  }
+  .dropdown.open { display: flex; }
+  .dropdown-item {
+    padding: .62rem 1.3rem;
+    font-size: .85rem;
+    color: var(--charcoal);
+    cursor: pointer;
+    border-radius: 999px;
+    margin: .05rem .4rem;
+    transition: background .15s;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+  }
+  .dropdown-item:hover { background: var(--sage-light); }
+  .dropdown-item.selected { background: var(--sage-light); font-weight: 600; }
+  .dropdown-item.disabled { opacity: .38; pointer-events: none; text-decoration: line-through; }
+
+  /* Guess button */
+  .guess-btn {
+    padding: .72rem 2rem;
+    border-radius: 999px;
+    border: none;
+    background: var(--rose);
+    color: var(--ivory);
+    font-family: 'Playfair Display', serif;
+    font-size: .9rem;
+    font-style: italic;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: background .2s, transform .12s;
+    align-self: flex-start;
+  }
+  .guess-btn:hover { background: var(--charcoal); transform: translateY(-1px); }
+  .guess-btn:active { transform: scale(.97); }
+  .guess-btn:disabled { opacity: .4; pointer-events: none; }
+
+  /* ── Feedback messages ───────────────────────────────────── */
+  .feedback {
+    text-align: center;
+    font-size: .83rem;
+    min-height: 1.3em;
+    font-weight: 500;
+    letter-spacing: .04em;
+    transition: opacity .3s;
+  }
+  .feedback.wrong   { color: var(--rose); }
+  .feedback.correct { color: var(--sage); }
+  .feedback.info    { color: var(--warm-grey); }
+
+  /* ── Result banner ───────────────────────────────────────── */
+  .result-banner {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    padding: 1.4rem 1.2rem 1rem;
+    border-radius: 1.6rem;
+    text-align: center;
+  }
+  .result-banner.show { display: flex; }
+  .result-banner.win  { background: #E8F3E9; border: 1.5px solid var(--sage); }
+  .result-banner.lose { background: #F5E8E8; border: 1.5px solid var(--blush); }
+  .result-banner .result-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-style: italic;
+  }
+  .result-banner.win  .result-title { color: #3E7A46; }
+  .result-banner.lose .result-title { color: var(--rose); }
+  .result-banner .result-song {
+    font-size: .82rem;
+    color: var(--warm-grey);
+  }
+  .result-banner .result-song strong {
+    color: var(--charcoal);
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+  }
+  .replay-btn {
+    margin-top: .4rem;
+    padding: .55rem 1.8rem;
+    border-radius: 999px;
+    border: none;
+    background: var(--charcoal);
+    color: var(--ivory);
+    font-family: 'DM Sans', sans-serif;
+    font-size: .8rem;
+    letter-spacing: .07em;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .replay-btn:hover { background: var(--rose); }
+
+  /* ── Guess history ───────────────────────────────────────── */
+  .history-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    font-size: .78rem;
+    padding: .28rem .8rem;
+    border-radius: 999px;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+  }
+  .history-item.wrong   { background: #F2DADA; color: var(--rose); }
+  .history-item.skipped { background: #EDE0D0; color: var(--gold); }
+  .history-item .h-icon { font-style: normal; font-size: .9rem; }
+
+  /* ── Divider ─────────────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--sage-light);
+    border-radius: 1px;
+  }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 440px) {
+    .card { border-radius: 1.6rem; padding: 1.6rem 1.2rem; }
+    .play-btn { padding: .7rem 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="logo-eyebrow">♪ Are you a Lauver?</p>
+  <h1>Laufey <em>Heardle</em></h1>
+  <p class="subtitle">Guess the song from a snippet — can you hear it?</p>
+</header>
+
+<div class="card">
+
+  <!-- Attempt pips -->
+  <div class="attempt-row" id="pipRow"></div>
+
+  <div class="divider"></div>
+
+  <!-- Player -->
+  <div class="player-section">
+    <button class="play-btn" id="playBtn" onclick="togglePlay()">
+      <span class="icon" id="playIcon">▶</span>
+      <span id="playLabel">Play Snippet</span>
+    </button>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap">
+      <div class="progress-track" id="progressTrack" onclick="seekBar(event)">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="markers" id="markersEl"></div>
+    </div>
+    <div class="time-display">
+      <span id="timeCurrent">0:00</span>
+      <span id="timeLimit">/ —</span>
+    </div>
+
+    <div class="limit-badge" id="limitBadge">
+      Listening: <strong id="limitText">—</strong>
+    </div>
+
+    <button class="skip-btn" id="skipBtn" onclick="skipAttempt()">
+      Not sure? Press to skip →
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Guess section -->
+  <div class="guess-section">
+    <div class="guess-input-wrap">
+      <input
+        class="guess-input"
+        id="guessInput"
+        type="text"
+        placeholder="Enter a song name..."
+        readonly
+        onclick="toggleDropdown()"
+        autocomplete="off"
+      />
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+    <button class="guess-btn" id="guessBtn" onclick="submitGuess()" disabled>
+      Guess this song
+    </button>
+    <p class="feedback" id="feedback"></p>
+  </div>
+
+  <!-- Guess history -->
+  <ul class="history-list" id="historyList"></ul>
+
+  <!-- Result banner -->
+  <div class="result-banner" id="resultBanner">
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-song" id="resultSong"></div>
+    <button class="replay-btn" onclick="newGame()">Play again ↺</button>
+  </div>
+
+</div>
+
+<!-- Hidden audio element -->
+<audio id="audioEl" preload="auto"></audio>
+
+<script>
+/* ── State ───────────────────────────────────────────────── */
+let currentSong   = null;
+let attemptIndex  = 0;        // 0-based attempt number
+let maxAttempts   = 0;        // = ATTEMPT_DURATIONS.length
+let guessedWrong  = [];       // names of wrong guesses
+let selectedGuess = null;     // currently picked song name
+let playing       = false;
+let clipEnd       = 0;        // seconds
+let rafId         = null;
+let gameOver      = false;
+
+const audio = document.getElementById('audioEl');
+
+/* ── Init ────────────────────────────────────────────────── */
+function newGame() {
+  if (!window.LAUFEY_SONGS || LAUFEY_SONGS.length === 0) {
+    alert('No songs found! Make sure songs.js is loaded correctly.');
+    return;
+  }
+  maxAttempts  = ATTEMPT_DURATIONS.length;
+  attemptIndex = 0;
+  guessedWrong = [];
+  selectedGuess = null;
+  gameOver     = false;
+
+  // pick random song
+  currentSong = LAUFEY_SONGS[Math.floor(Math.random() * LAUFEY_SONGS.length)];
+
+  audio.src = currentSong.file;
+  audio.load();
+  stopAudio();
+
+  buildPips();
+  buildDropdown();
+  updateAttemptUI();
+  clearResult();
+  document.getElementById('historyList').innerHTML = '';
+  setFeedback('', '');
+  document.getElementById('guessBtn').disabled = true;
+  document.getElementById('guessInput').value  = '';
+  selectedGuess = null;
+  enableInput();
+}
+
+/* ── Pip builder ─────────────────────────────────────────── */
+function buildPips() {
+  const row = document.getElementById('pipRow');
+  row.innerHTML = '';
+  const labels = ATTEMPT_DURATIONS.map(d => d === Infinity ? '∞' : `${d}s`);
+  labels.forEach((lbl, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'pip';
+    pip.id = `pip-${i}`;
+    pip.innerHTML = `<span class="dot"></span>${lbl}`;
+    row.appendChild(pip);
+  });
+}
+
+function updatePips() {
+  for (let i = 0; i < maxAttempts; i++) {
+    const pip = document.getElementById(`pip-${i}`);
+    if (!pip) continue;
+    pip.className = 'pip';
+    if (i < attemptIndex) {
+      // past attempt — was it skipped or wrong?
+      const wasSkip = guessedWrong[i] === '__skip__';
+      pip.classList.add(wasSkip ? 'skipped' : 'wrong');
+    } else if (i === attemptIndex) {
+      pip.classList.add('active');
+    }
+  }
+}
+
+/* ── Dropdown ────────────────────────────────────────────── */
+function buildDropdown() {
+  const dd = document.getElementById('dropdown');
+  dd.innerHTML = '';
+  const sorted = [...LAUFEY_SONGS].sort((a,b) => a.name.localeCompare(b.name));
+  sorted.forEach(song => {
+    const item = document.createElement('div');
+    item.className = 'dropdown-item';
+    item.dataset.name = song.name;
+    item.textContent = song.name;
+    item.addEventListener('click', () => selectSong(song.name));
+    dd.appendChild(item);
+  });
+}
+
+function updateDropdownDisabled() {
+  document.querySelectorAll('.dropdown-item').forEach(el => {
+    el.classList.toggle('disabled', guessedWrong.includes(el.dataset.name));
+  });
+}
+
+function toggleDropdown() {
+  if (gameOver) return;
+  const dd = document.getElementById('dropdown');
+  const inp = document.getElementById('guessInput');
+  const isOpen = dd.classList.toggle('open');
+  inp.classList.toggle('open', isOpen);
+  updateDropdownDisabled();
+}
+
+function closeDropdown() {
+  document.getElementById('dropdown').classList.remove('open');
+  document.getElementById('guessInput').classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.guess-input-wrap')) closeDropdown();
+});
+
+function selectSong(name) {
+  selectedGuess = name;
+  document.getElementById('guessInput').value = name;
+  document.getElementById('guessBtn').disabled = false;
+  closeDropdown();
+  // highlight in dropdown
+  document.querySelectorAll('.dropdown-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.name === name);
+  });
+}
+
+/* ── Audio / Player ──────────────────────────────────────── */
+function updateAttemptUI() {
+  const dur = ATTEMPT_DURATIONS[attemptIndex];
+  const isInfinite = dur === Infinity;
+  clipEnd = isInfinite ? Infinity : dur;
+
+  document.getElementById('limitText').textContent = isInfinite ? 'Full song' : `${dur} second${dur===1?'':'s'}`;
+  document.getElementById('timeLimit').textContent = isInfinite ? '' : `/ ${fmt(dur)}`;
+  updatePips();
+  buildMarkers();
+}
+
+function togglePlay() {
+  if (gameOver) return;
+  if (playing) {
+    stopAudio();
+  } else {
+    audio.currentTime = 0;
+    playAudio();
+  }
+}
+
+function playAudio() {
+  audio.play().catch(()=>{});
+  playing = true;
+  document.getElementById('playIcon').textContent  = '⏸';
+  document.getElementById('playLabel').textContent = 'Pause';
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopAudio() {
+  audio.pause();
+  playing = false;
+  document.getElementById('playIcon').textContent  = '▶';
+  document.getElementById('playLabel').textContent = 'Play Snippet';
+  cancelAnimationFrame(rafId);
+}
+
+function tick() {
+  const cur  = audio.currentTime;
+  const dur  = isFinite(audio.duration) ? audio.duration : 1;
+  const limit = clipEnd === Infinity ? dur : Math.min(clipEnd, dur);
+
+  // stop at clip limit
+  if (cur >= limit) {
+    stopAudio();
+    audio.currentTime = 0;
+    updateProgress(0, dur);
+    return;
+  }
+
+  updateProgress(cur, dur);
+  rafId = requestAnimationFrame(tick);
+}
+
+function updateProgress(cur, totalDur) {
+  const limit   = clipEnd === Infinity ? totalDur : Math.min(clipEnd, totalDur);
+  const pct     = limit > 0 ? Math.min(cur / limit * 100, 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('timeCurrent').textContent  = fmt(cur);
+
+  // light up markers
+  document.querySelectorAll('.marker').forEach(m => {
+    const at = parseFloat(m.dataset.at);
+    m.classList.toggle('lit', cur >= at - .05);
+  });
+}
+
+function seekBar(e) {
+  if (!isFinite(audio.duration)) return;
+  const track = document.getElementById('progressTrack');
+  const rect  = track.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const limit = clipEnd === Infinity ? audio.duration : Math.min(clipEnd, audio.duration);
+  audio.currentTime = ratio * limit;
+  if (!playing) {
+    updateProgress(audio.currentTime, audio.duration);
+  }
+}
+
+/* ── Markers on progress bar ─────────────────────────────── */
+function buildMarkers() {
+  const el    = document.getElementById('markersEl');
+  el.innerHTML = '';
+
+  // We show markers at the attempt time limits that are < current limit
+  const currentLimit = clipEnd === Infinity ? null : clipEnd;
+  // Markers: all finite ATTEMPT_DURATIONS
+  const finiteMarkers = ATTEMPT_DURATIONS.filter(d => isFinite(d));
+
+  // We need the total song duration — but it may not be loaded yet.
+  // We'll use a maximum assumed duration for layout (will refine once metadata loads)
+  const songDur = (isFinite(audio.duration) && audio.duration > 0) ? audio.duration : clipEnd;
+  if (!isFinite(songDur) || songDur === 0) return;
+
+  finiteMarkers.forEach(sec => {
+    if (sec > songDur) return;
+    const pct = (sec / songDur) * 100;
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+    marker.dataset.at = sec;
+    marker.style.left = pct + '%';
+    marker.innerHTML = `<div class="marker-tick"></div><span class="marker-label">${sec}s</span>`;
+    el.appendChild(marker);
+  });
+}
+
+audio.addEventListener('loadedmetadata', buildMarkers);
+
+/* ── Skip ────────────────────────────────────────────────── */
+function skipAttempt() {
+  if (gameOver) return;
+  stopAudio();
+  audio.currentTime = 0;
+  guessedWrong[attemptIndex] = '__skip__';
+  addHistoryItem('__skip__', 'skipped');
+  advanceAttempt();
+}
+
+/* ── Submit guess ────────────────────────────────────────── */
+function submitGuess() {
+  if (!selectedGuess || gameOver) return;
+  stopAudio();
+  audio.currentTime = 0;
+
+  if (selectedGuess === currentSong.name) {
+    // Correct!
+    gameOver = true;
+    // Mark pip correct
+    const pip = document.getElementById(`pip-${attemptIndex}`);
+    if (pip) { pip.className = 'pip correct'; }
+    setFeedback('', '');
+    showResult(true);
+    disableInput();
+  } else {
+    // Wrong
+    guessedWrong[attemptIndex] = selectedGuess;
+    addHistoryItem(selectedGuess, 'wrong');
+    setFeedback(`✗  "${selectedGuess}" is not the song.`, 'wrong');
+    advanceAttempt();
+  }
+
+  // reset input
+  selectedGuess = null;
+  document.getElementById('guessInput').value = '';
+  document.getElementById('guessBtn').disabled = true;
+  document.querySelectorAll('.dropdown-item').forEach(el => el.classList.remove('selected'));
+}
+
+function advanceAttempt() {
+  attemptIndex++;
+  if (attemptIndex >= maxAttempts) {
+    gameOver = true;
+    showResult(false);
+    disableInput();
+  } else {
+    updateAttemptUI();
+    updateDropdownDisabled();
+  }
+}
+
+/* ── History ─────────────────────────────────────────────── */
+function addHistoryItem(name, type) {
+  const list = document.getElementById('historyList');
+  const li   = document.createElement('li');
+  li.className = `history-item ${type}`;
+  const icon = type === 'skipped' ? '↷' : '✕';
+  li.innerHTML = `<span class="h-icon">${icon}</span>${name === '__skip__' ? 'Skipped' : name}`;
+  list.appendChild(li);
+}
+
+/* ── Result ──────────────────────────────────────────────── */
+function showResult(won) {
+  const banner = document.getElementById('resultBanner');
+  banner.className = `result-banner show ${won ? 'win' : 'lose'}`;
+  document.getElementById('resultTitle').textContent = won ? '🎵 You got it!' : 'Better luck next time…';
+  document.getElementById('resultSong').innerHTML =
+    `The song was <strong>${currentSong.name}</strong>`;
+  // full song plays on win
+  if (won) {
+    clipEnd = Infinity;
+    playAudio();
+  }
+}
+
+function clearResult() {
+  document.getElementById('resultBanner').className = 'result-banner';
+}
+
+function disableInput() {
+  document.getElementById('playBtn').disabled    = true;
+  document.getElementById('skipBtn').disabled    = true;
+  document.getElementById('guessBtn').disabled   = true;
+  document.getElementById('guessInput').disabled = true;
+}
+
+function enableInput() {
+  document.getElementById('playBtn').disabled    = false;
+  document.getElementById('skipBtn').disabled    = false;
+  document.getElementById('guessBtn').disabled   = false;
+  document.getElementById('guessInput').disabled = false;
+}
+
+/* ── Utils ───────────────────────────────────────────────── */
+function fmt(s) {
+  if (!isFinite(s)) return '—';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2,'0');
+  return `${m}:${sec}`;
+}
+
+function setFeedback(msg, cls) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className   = `feedback ${cls}`;
+}
+
+/* ── Kick off ────────────────────────────────────────────── */
+newGame();
+</script>
+</body>
+</html>
