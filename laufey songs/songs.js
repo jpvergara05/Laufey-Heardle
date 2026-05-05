@@ -8,9 +8,9 @@
 window.LAUFEY_SONGS = [
   { name: "From The Start",               file: "laufey%20songs/audio/from_the_start.mp3" }, // Done
   { name: "Valentine",                    file: "laufey%20songs/audio/valentine.mp3" }, // Done
-  { name: "Bewitched",                    file: "laufey%20songs/audio/bewitched.mp3" },
+  { name: "Bewitched",                    file: "laufey%20songs/audio/bewitched.mp3" }, // Done
   { name: "Let You Break My Heart Again", file: "laufey%20songs/audio/let_you_break_my_heart_again.mp3" }, // Done
-  { name: "Beautiful Stranger",           file: "laufey%20songs/audio/beautiful_stranger.mp3" },
+  { name: "Beautiful Stranger",           file: "laufey%20songs/audio/beautiful_stranger.mp3" }, // Done
   { name: "Falling Behind",               file: "laufey%20songs/audio/falling_behind.mp3" },
   { name: "A Night to Remember",          file: "laufey%20songs/audio/a_night_to_remember.mp3" },
   { name: "Lovesick",                     file: "laufey%20songs/audio/lovesick.mp3" },        
