@@ -536,6 +536,7 @@
         id="guessInput"
         type="text"
         placeholder="Enter a song name..."
+        onclick="toggleDropdown()"
         oninput="filterSongs()"
         autocomplete="off"
       />
@@ -655,11 +656,6 @@ function buildDropdown(query = '') {
     item.addEventListener('click', () => selectSong(song.name));
     dd.appendChild(item);
   });
-  
-  // Show dropdown if there are results
-  if (filtered.length > 0) {
-    dd.classList.add('open');
-  }
 }
 
 function filterSongs() {
@@ -667,6 +663,8 @@ function filterSongs() {
   const query = document.getElementById('guessInput').value;
   buildDropdown(query);
   updateDropdownDisabled();
+  const dd = document.getElementById('dropdown');
+  dd.classList.toggle('open', query.trim().length > 0 && dd.children.length > 0);
 }
 
 function updateDropdownDisabled() {
@@ -679,9 +677,15 @@ function toggleDropdown() {
   if (gameOver) return;
   const dd = document.getElementById('dropdown');
   const inp = document.getElementById('guessInput');
-  const isOpen = dd.classList.toggle('open');
+  const isOpen = !dd.classList.contains('open');
+  if (isOpen) {
+    buildDropdown(inp.value);
+    updateDropdownDisabled();
+    dd.classList.add('open');
+  } else {
+    dd.classList.remove('open');
+  }
   inp.classList.toggle('open', isOpen);
-  updateDropdownDisabled();
 }
 
 function closeDropdown() {
@@ -890,11 +894,10 @@ function showResult(won) {
   document.getElementById('resultTitle').textContent = won ? '🎵 You got it!' : 'Better luck next time…';
   document.getElementById('resultSong').innerHTML =
     `The song was <strong>${currentSong.name}</strong>`;
-  // full song plays on win
-  if (won) {
-    clipEnd = Infinity;
-    playAudio();
-  }
+  // full song plays on win or loss after the result screen
+  clipEnd = Infinity;
+  audio.currentTime = 0;
+  playAudio();
 }
 
 function clearResult() {
