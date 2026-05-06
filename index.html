@@ -106,6 +106,67 @@
     user-select: none;
   }
 
+  .hidden { display: none !important; }
+
+  .result-screen {
+    background: var(--card-bg);
+    border-radius: 2.4rem;
+    box-shadow: 0 8px 40px var(--shadow);
+    padding: 2.2rem 2rem 2rem;
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+    text-align: center;
+  }
+  .result-art {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 2rem;
+    background: linear-gradient(145deg, rgba(185,122,114,.95), rgba(196,169,107,.95));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ivory);
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.5rem, 2.2vw, 2.2rem);
+    line-height: 1.1;
+    padding: 1.5rem;
+  }
+  .result-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2rem;
+  }
+  .result-art span { display: block; }
+  .result-emotion {
+    font-size: 1rem;
+    color: var(--rose);
+    font-weight: 600;
+    letter-spacing: .03em;
+  }
+  .result-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 3vw, 2.6rem);
+    color: var(--charcoal);
+    margin-top: -0.5rem;
+  }
+  .result-copy {
+    max-width: 420px;
+    color: var(--warm-grey);
+    line-height: 1.6;
+  }
+  .result-cover {
+    font-size: .95rem;
+    color: var(--ivory);
+    opacity: .95;
+    margin-top: .4rem;
+  }
+
   /* ── Attempt pips ────────────────────────────────────────── */
   .attempt-row {
     display: flex;
@@ -551,10 +612,16 @@
   <!-- Guess history -->
   <ul class="history-list" id="historyList"></ul>
 
-  <!-- Result banner -->
-  <div class="result-banner" id="resultBanner">
+  </div>
+
+  <!-- Result screen -->
+  <div class="result-screen hidden" id="resultScreen">
+    <div class="result-art">
+      <img id="resultCover" src="" alt="Album cover" />
+    </div>
+    <div class="result-emotion" id="resultEmotion"></div>
     <div class="result-title" id="resultTitle"></div>
-    <div class="result-song" id="resultSong"></div>
+    <div class="result-copy" id="resultSong"></div>
     <button class="replay-btn" onclick="newGame()">Play again ↺</button>
   </div>
 
@@ -574,6 +641,18 @@ let playing       = false;
 let clipEnd       = 0;        // seconds
 let rafId         = null;
 let gameOver      = false;
+let lastSong      = null;     // track last played song to avoid repeats
+
+const VICTORY_LINES = [
+  'You heard the hush, the heartache, and the halo — a true Laufey win.',
+  'That felt like sinking into a Laufey song. Nicely played.',
+  'The strings, the mood, the answer — you got the Laufey magic.'
+];
+const LOSS_LINES = [
+  'Laufey pulled a hush on you this round. Try again for the whole feeling.',
+  'The song slipped away like a late-night melody. Better luck next time.',
+  'The piano and lyrics were too soft to catch this time. Keep listening.'
+];
 
 const audio = document.getElementById('audioEl');
 
@@ -589,16 +668,21 @@ function newGame() {
   selectedGuess = null;
   gameOver     = false;
 
-  // pick random song
-  currentSong = LAUFEY_SONGS[Math.floor(Math.random() * LAUFEY_SONGS.length)];
+  // pick random song (avoid repeating last song)
+  let availableSongs = LAUFEY_SONGS.filter(song => song !== lastSong);
+  if (availableSongs.length === 0) availableSongs = LAUFEY_SONGS; // if only one song, allow repeat
+  currentSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+  lastSong = currentSong;
 
   audio.src = currentSong.file;
   audio.load();
   stopAudio();
+  audio.currentTime = 0;
 
   buildPips();
   buildDropdown();
   updateAttemptUI();
+  resetProgressDisplay();
   clearResult();
   document.getElementById('historyList').innerHTML = '';
   setFeedback('', '');
@@ -607,6 +691,12 @@ function newGame() {
   selectedGuess = null;
   enableInput();
 }
+
+function resetProgressDisplay() {
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('timeCurrent').textContent = '0:00';
+}
+
 
 /* ── Pip builder ─────────────────────────────────────────── */
 function buildPips() {
@@ -889,19 +979,35 @@ function addHistoryItem(name, type) {
 
 /* ── Result ──────────────────────────────────────────────── */
 function showResult(won) {
-  const banner = document.getElementById('resultBanner');
-  banner.className = `result-banner show ${won ? 'win' : 'lose'}`;
-  document.getElementById('resultTitle').textContent = won ? '🎵 You got it!' : 'Better luck next time…';
-  document.getElementById('resultSong').innerHTML =
-    `The song was <strong>${currentSong.name}</strong>`;
-  // full song plays on win or loss after the result screen
+  const screen = document.getElementById('resultScreen');
+  const card = document.querySelector('.card');
+  const emotion = document.getElementById('resultEmotion');
+  const title = document.getElementById('resultTitle');
+  const copy = document.getElementById('resultSong');
+
+  card.classList.add('hidden');
+  screen.classList.remove('hidden');
+
+  emotion.textContent = '';
+
+  title.textContent = won
+    ? VICTORY_LINES[Math.floor(Math.random() * VICTORY_LINES.length)]
+    : LOSS_LINES[Math.floor(Math.random() * LOSS_LINES.length)];
+
+  copy.innerHTML = `The song was <em>${currentSong.name}</em>.`;
+
+  const cover = document.getElementById('resultCover');
+  cover.src = currentSong.image || '';
+  cover.alt = `Album art for ${currentSong.name}`;
+
   clipEnd = Infinity;
   audio.currentTime = 0;
   playAudio();
 }
 
 function clearResult() {
-  document.getElementById('resultBanner').className = 'result-banner';
+  document.getElementById('resultScreen').classList.add('hidden');
+  document.querySelector('.card').classList.remove('hidden');
 }
 
 function disableInput() {
