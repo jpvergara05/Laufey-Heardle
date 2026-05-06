@@ -193,7 +193,7 @@
   /* progress bar container */
   .progress-wrap {
     position: relative;
-    height: 36px;
+    height: 60px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -231,10 +231,7 @@
   }
   /* time markers */
   .markers {
-    position: absolute;
-    top: 50%; left: 2px; right: 2px;
-    transform: translateY(-50%);
-    pointer-events: none;
+    display: none;
   }
   .marker {
     position: absolute;
@@ -259,7 +256,9 @@
     font-weight: 500;
     letter-spacing: .03em;
     position: absolute;
-    top: 16px;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
     white-space: nowrap;
   }
   .marker.lit .marker-label { color: var(--rose); }
@@ -537,8 +536,7 @@
         id="guessInput"
         type="text"
         placeholder="Enter a song name..."
-        readonly
-        onclick="toggleDropdown()"
+        oninput="filterSongs()"
         autocomplete="off"
       />
       <div class="dropdown" id="dropdown"></div>
@@ -639,11 +637,17 @@ function updatePips() {
 }
 
 /* ── Dropdown ────────────────────────────────────────────── */
-function buildDropdown() {
+function buildDropdown(query = '') {
   const dd = document.getElementById('dropdown');
   dd.innerHTML = '';
   const sorted = [...LAUFEY_SONGS].sort((a,b) => a.name.localeCompare(b.name));
-  sorted.forEach(song => {
+  
+  // Filter songs based on query
+  const filtered = query.trim() === '' ? sorted : sorted.filter(song => 
+    song.name.toLowerCase().includes(query.toLowerCase())
+  );
+  
+  filtered.forEach(song => {
     const item = document.createElement('div');
     item.className = 'dropdown-item';
     item.dataset.name = song.name;
@@ -651,6 +655,18 @@ function buildDropdown() {
     item.addEventListener('click', () => selectSong(song.name));
     dd.appendChild(item);
   });
+  
+  // Show dropdown if there are results
+  if (filtered.length > 0) {
+    dd.classList.add('open');
+  }
+}
+
+function filterSongs() {
+  if (gameOver) return;
+  const query = document.getElementById('guessInput').value;
+  buildDropdown(query);
+  updateDropdownDisabled();
 }
 
 function updateDropdownDisabled() {
@@ -796,6 +812,14 @@ function buildMarkers() {
 }
 
 audio.addEventListener('loadedmetadata', buildMarkers);
+
+/* Prevent media keyboard controls from bypassing game logic */
+audio.addEventListener('play', (e) => {
+  if (!playing) {
+    e.preventDefault();
+    audio.pause();
+  }
+});
 
 /* ── Skip ────────────────────────────────────────────────── */
 function skipAttempt() {
