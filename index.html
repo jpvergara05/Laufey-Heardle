@@ -43,6 +43,7 @@
     flex-direction: column;
     align-items: center;
     padding: 2.5rem 1rem 4rem;
+    transition: background 0.8s ease;
     /* subtle linen texture */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23F5EFE6'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23EDE6DB' opacity='.6'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23EDE6DB' opacity='.6'/%3E%3C/svg%3E");
   }
@@ -165,6 +166,53 @@
     color: var(--ivory);
     opacity: .95;
     margin-top: .4rem;
+  }
+
+  /* ── Result screen animations ────────────────────────────── */
+  #confettiContainer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 999;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -16px;
+    border-radius: 2px;
+    opacity: 0;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0)     rotate(0deg);   opacity: 1; }
+    85%  { opacity: 1; }
+    100% { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+  }
+  .result-screen.win .result-art img {
+    animation: artBounce 0.65s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  .result-screen.win .result-title { animation: textSlideUp 0.5s ease 0.25s both; }
+  .result-screen.win .result-copy  { animation: textSlideUp 0.5s ease 0.4s  both; }
+  .result-screen.lose .result-art img {
+    animation: artSway 0.9s ease both;
+  }
+  @keyframes artBounce {
+    0%   { transform: scale(0.75); opacity: 0; }
+    60%  { transform: scale(1.07); }
+    80%  { transform: scale(0.97); }
+    100% { transform: scale(1);    opacity: 1; }
+  }
+  @keyframes textSlideUp {
+    from { transform: translateY(14px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @keyframes artSway {
+    0%   { transform: translateX(0)    scale(0.9); opacity: 0; }
+    20%  { transform: translateX(-10px); }
+    50%  { transform: translateX(10px); }
+    75%  { transform: translateX(-5px); }
+    100% { transform: translateX(0)    scale(1); opacity: 1; }
   }
 
   /* ── Attempt pips ────────────────────────────────────────── */
@@ -630,6 +678,8 @@
 <!-- Hidden audio element -->
 <audio id="audioEl" preload="auto"></audio>
 
+<div id="confettiContainer" aria-hidden="true"></div>
+
 <script>
 /* ── State ───────────────────────────────────────────────── */
 let currentSong   = null;
@@ -677,7 +727,7 @@ function newGame() {
   audio.src = currentSong.file;
   audio.load();
   stopAudio();
-  audio.currentTime = 0;
+  audio.currentTime = currentSong.start || 0;
 
   buildPips();
   buildDropdown();
@@ -802,7 +852,7 @@ function selectSong(name) {
 function updateAttemptUI() {
   const dur = ATTEMPT_DURATIONS[attemptIndex];
   const isInfinite = dur === Infinity;
-  clipEnd = isInfinite ? Infinity : dur;
+  clipEnd = isInfinite ? Infinity : (currentSong.start || 0) + dur;
 
   document.getElementById('limitText').textContent = isInfinite ? 'Full song' : `${dur} second${dur===1?'':'s'}`;
   document.getElementById('timeLimit').textContent = isInfinite ? '' : `/ ${fmt(dur)}`;
@@ -815,7 +865,7 @@ function togglePlay() {
   if (playing) {
     stopAudio();
   } else {
-    audio.currentTime = 0;
+    audio.currentTime = currentSong.start || 0;
     playAudio();
   }
 }
@@ -844,8 +894,8 @@ function tick() {
   // stop at clip limit
   if (cur >= limit) {
     stopAudio();
-    audio.currentTime = 0;
-    updateProgress(0, dur);
+    audio.currentTime = currentSong.start || 0;
+    updateProgress(currentSong.start || 0, dur);
     return;
   }
 
@@ -854,8 +904,9 @@ function tick() {
 }
 
 function updateProgress(cur, totalDur) {
+  const start   = currentSong ? (currentSong.start || 0) : 0;
   const limit   = clipEnd === Infinity ? totalDur : Math.min(clipEnd, totalDur);
-  const pct     = limit > 0 ? Math.min(cur / limit * 100, 100) : 0;
+  const pct     = limit > start ? Math.min((cur - start) / (limit - start) * 100, 100) : 0;
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('timeCurrent').textContent  = fmt(cur);
 
@@ -871,8 +922,9 @@ function seekBar(e) {
   const track = document.getElementById('progressTrack');
   const rect  = track.getBoundingClientRect();
   const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const start = currentSong ? (currentSong.start || 0) : 0;
   const limit = clipEnd === Infinity ? audio.duration : Math.min(clipEnd, audio.duration);
-  audio.currentTime = ratio * limit;
+  audio.currentTime = start + ratio * (limit - start);
   if (!playing) {
     updateProgress(audio.currentTime, audio.duration);
   }
@@ -893,12 +945,14 @@ function buildMarkers() {
   const songDur = (isFinite(audio.duration) && audio.duration > 0) ? audio.duration : clipEnd;
   if (!isFinite(songDur) || songDur === 0) return;
 
+  const startOff = currentSong ? (currentSong.start || 0) : 0;
   finiteMarkers.forEach(sec => {
-    if (sec > songDur) return;
-    const pct = (sec / songDur) * 100;
+    const audioAt = startOff + sec;
+    if (audioAt > songDur) return;
+    const pct = (audioAt / songDur) * 100;
     const marker = document.createElement('div');
     marker.className = 'marker';
-    marker.dataset.at = sec;
+    marker.dataset.at = audioAt;
     marker.style.left = pct + '%';
     marker.innerHTML = `<div class="marker-tick"></div><span class="marker-label">${sec}s</span>`;
     el.appendChild(marker);
@@ -919,7 +973,7 @@ audio.addEventListener('play', (e) => {
 function skipAttempt() {
   if (gameOver) return;
   stopAudio();
-  audio.currentTime = 0;
+  audio.currentTime = currentSong.start || 0;
   guessedWrong[attemptIndex] = '__skip__';
   addHistoryItem('__skip__', 'skipped');
   advanceAttempt();
@@ -929,7 +983,7 @@ function skipAttempt() {
 function submitGuess() {
   if (!selectedGuess || gameOver) return;
   stopAudio();
-  audio.currentTime = 0;
+  audio.currentTime = currentSong.start || 0;
 
   if (selectedGuess === currentSong.name) {
     // Correct!
@@ -977,6 +1031,109 @@ function addHistoryItem(name, type) {
   list.appendChild(li);
 }
 
+/* ── Album color extraction ──────────────────────────────── */
+function extractDominantColors(img) {
+  try {
+    const canvas = document.createElement('canvas');
+    const SIZE = 60;
+    canvas.width = canvas.height = SIZE;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, SIZE, SIZE);
+    const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
+
+    const freq = {};
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 128) continue;
+      const r = Math.round(data[i]     / 24) * 24;
+      const g = Math.round(data[i + 1] / 24) * 24;
+      const b = Math.round(data[i + 2] / 24) * 24;
+      const lum = (r + g + b) / 3;
+      if (lum > 230 || lum < 20) continue;
+      const key = `${r},${g},${b}`;
+      freq[key] = (freq[key] || 0) + 1;
+    }
+
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    if (!sorted.length) return null;
+
+    const [r0, g0, b0] = sorted[0][0].split(',').map(Number);
+    let c2 = null;
+    for (const [key] of sorted.slice(1)) {
+      const [r, g, b] = key.split(',').map(Number);
+      if (Math.abs(r - r0) + Math.abs(g - g0) + Math.abs(b - b0) > 60) {
+        c2 = [r, g, b]; break;
+      }
+    }
+    if (!c2) c2 = sorted.length > 1 ? sorted[1][0].split(',').map(Number) : [r0, g0, b0];
+
+    return [`${r0},${g0},${b0}`, `${c2[0]},${c2[1]},${c2[2]}`];
+  } catch (e) { return null; }
+}
+
+function lightenColor(rgb, amount) {
+  const [r, g, b] = rgb.split(',').map(Number);
+  return `${Math.round(r+(255-r)*amount)},${Math.round(g+(255-g)*amount)},${Math.round(b+(255-b)*amount)}`;
+}
+
+function launchConfetti(colors) {
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left:${Math.random()*100}%;
+      background:${colors[i % colors.length]};
+      width:${5+Math.random()*5}px;
+      height:${9+Math.random()*9}px;
+      animation-delay:${Math.random()*0.9}s;
+      animation-duration:${1+Math.random()*1.3}s;
+      transform:rotate(${Math.random()*360}deg);
+    `;
+    container.appendChild(el);
+  }
+}
+
+function playWinSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  [[523.25,0],[659.25,.13],[783.99,.26],[1046.5,.39]].forEach(([freq,t]) => {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ctx.currentTime+t);
+    gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime+t+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t+0.45);
+    osc.start(ctx.currentTime+t); osc.stop(ctx.currentTime+t+0.45);
+  });
+}
+
+function playLoseSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  [[392,0],[349.23,.22],[311.13,.44]].forEach(([freq,t]) => {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ctx.currentTime+t);
+    gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime+t+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t+0.55);
+    osc.start(ctx.currentTime+t); osc.stop(ctx.currentTime+t+0.55);
+  });
+}
+
+function applyAlbumGradient(imgEl, won) {
+  const colors = extractDominantColors(imgEl);
+  const fallback = ['185,122,114', '196,169,107'];
+  const [c1, c2] = colors || fallback;
+  document.body.style.background = `linear-gradient(145deg, rgb(${c1}) 0%, rgb(${c2}) 100%)`;
+  document.querySelector('.result-art').style.background =
+    `linear-gradient(145deg, rgba(${c1},.9) 0%, rgba(${c2},.9) 100%)`;
+  document.getElementById('resultScreen').style.background =
+    `linear-gradient(145deg, rgb(${lightenColor(c1,.74)}) 0%, rgb(${lightenColor(c2,.74)}) 100%)`;
+  if (won) {
+    launchConfetti([`rgb(${c1})`,`rgb(${c2})`,`rgb(${lightenColor(c1,.45)})`,`rgb(${lightenColor(c2,.45)})`,'#FFFAF5']);
+  }
+}
+
 /* ── Result ──────────────────────────────────────────────── */
 function showResult(won) {
   const screen = document.getElementById('resultScreen');
@@ -986,7 +1143,10 @@ function showResult(won) {
   const copy = document.getElementById('resultSong');
 
   card.classList.add('hidden');
-  screen.classList.remove('hidden');
+  screen.classList.remove('hidden', 'win', 'lose');
+  screen.classList.add(won ? 'win' : 'lose');
+
+  if (won) playWinSound(); else playLoseSound();
 
   emotion.textContent = '';
 
@@ -997,8 +1157,10 @@ function showResult(won) {
   copy.innerHTML = `The song was <em>${currentSong.name}</em>.`;
 
   const cover = document.getElementById('resultCover');
+  cover.onload = () => applyAlbumGradient(cover, won);
   cover.src = currentSong.image || '';
   cover.alt = `Album art for ${currentSong.name}`;
+  if (cover.complete && cover.naturalWidth) applyAlbumGradient(cover, won);
 
   clipEnd = Infinity;
   audio.currentTime = 0;
@@ -1006,8 +1168,14 @@ function showResult(won) {
 }
 
 function clearResult() {
-  document.getElementById('resultScreen').classList.add('hidden');
+  const screen = document.getElementById('resultScreen');
+  screen.classList.add('hidden');
+  screen.classList.remove('win', 'lose');
+  screen.style.background = '';
   document.querySelector('.card').classList.remove('hidden');
+  document.querySelector('.result-art').style.background = '';
+  document.body.style.background = '';
+  document.getElementById('confettiContainer').innerHTML = '';
 }
 
 function disableInput() {
