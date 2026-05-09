@@ -19,7 +19,7 @@
      warm ivory, soft charcoal, and a muted gold accent.
   ───────────────────────────────────────────────────────────── */
   :root {
-    --ivory:      #F5EFE6;
+    --ivory:      #EDE0CB;
     --blush:      #D4A9A1;
     --rose:       #B97A72;
     --sage:       #8FA68E;
@@ -28,8 +28,8 @@
     --warm-grey:  #7A726A;
     --gold:       #C4A96B;
     --gold-light: #E8D5A3;
-    --card-bg:    #FFFAF5;
-    --shadow:     rgba(46,42,38,.13);
+    --card-bg:    #F5ECD8;
+    --shadow:     rgba(46,42,38,.18);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,7 +45,7 @@
     padding: 2.5rem 1rem 4rem;
     transition: background 0.8s ease;
     /* subtle linen texture */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23F5EFE6'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23EDE6DB' opacity='.6'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23EDE6DB' opacity='.6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23EDE0CB'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23E0CEB0' opacity='.6'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23E0CEB0' opacity='.6'/%3E%3C/svg%3E");
   }
 
   /* ── Header ──────────────────────────────────────────────── */
@@ -590,17 +590,142 @@
     .card { border-radius: 1.6rem; padding: 1.6rem 1.2rem; }
     .play-btn { padding: .7rem 1.4rem; }
   }
+
+  /* ── Interactive enhancements ────────────────────────────── */
+
+  /* Entrance animations */
+  header { animation: headerDrop 0.5s cubic-bezier(.22,.68,0,1.1) both; }
+  @keyframes headerDrop {
+    from { transform: translateY(-18px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  .card { animation: cardRise 0.65s cubic-bezier(.22,.68,0,1.2) 0.15s both; }
+  @keyframes cardRise {
+    from { transform: translateY(28px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  /* Floating musical notes */
+  #floatingNotes {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .float-note {
+    position: absolute;
+    color: var(--blush);
+    opacity: 0;
+    animation: noteFloat linear infinite;
+    user-select: none;
+  }
+  @keyframes noteFloat {
+    0%   { transform: translateY(0)      rotate(-8deg);  opacity: 0; }
+    10%  { opacity: 0.4; }
+    90%  { opacity: 0.25; }
+    100% { transform: translateY(-85vh)  rotate(14deg);  opacity: 0; }
+  }
+
+  /* Waveform decoration under header */
+  .waveform-deco {
+    display: block;
+    width: 200px;
+    margin: 0.5rem auto 0;
+    color: var(--blush);
+    opacity: 0.45;
+  }
+
+  /* Pulsing play button ring */
+  .play-btn { position: relative; overflow: visible; }
+  .play-btn:not(.playing)::before {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 999px;
+    border: 2px solid var(--rose);
+    opacity: 0;
+    animation: btnPulse 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes btnPulse {
+    0%   { transform: scale(1);    opacity: 0.55; }
+    70%  { transform: scale(1.14); opacity: 0; }
+    100% { transform: scale(1.14); opacity: 0; }
+  }
+
+  /* Play row: vinyl + button side by side */
+  .play-row { display: flex; align-items: center; gap: 1rem; }
+
+  /* Vinyl record */
+  .vinyl {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: radial-gradient(circle,
+      var(--ivory) 0% 13%,
+      var(--blush) 13% 16%,
+      #2E2A26     16% 40%,
+      #3d3530     40% 43%,
+      #2E2A26     43% 60%,
+      #3d3530     60% 63%,
+      #2E2A26     63% 100%
+    );
+    box-shadow: 0 2px 10px rgba(46,42,38,.35);
+    position: relative;
+  }
+  .vinyl.spinning { animation: vinylSpin 1.8s linear infinite; }
+  @keyframes vinylSpin { to { transform: rotate(360deg); } }
+
+  /* Album art blur background inside card */
+  #cardAlbumBg {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.4rem;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    filter: blur(28px) saturate(1.4);
+    transition: opacity 1s ease, filter 1.8s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .attempt-row, .player-section, .history-list { position: relative; z-index: 1; }
+  .guess-section { z-index: 5; }
+
+  /* Pip pop animation */
+  @keyframes pipPop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.25); }
+    75%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+  .pip.pop { animation: pipPop 0.35s ease both; }
+
+  /* Input focus → rose glow */
+  .guess-input:focus, .guess-input.open {
+    border-color: var(--rose) !important;
+    box-shadow: 0 0 0 4px rgba(185,122,114,.18) !important;
+  }
 </style>
 </head>
 <body>
 
+<div id="floatingNotes" aria-hidden="true"></div>
+
 <header>
   <p class="logo-eyebrow">♪ Are you a Lauver?</p>
   <h1>Laufey <em>Heardle</em></h1>
-  <p class="subtitle">Guess the song from a snippet — can you hear it?</p>
+  <p class="subtitle" id="subtitle"></p>
+  <svg class="waveform-deco" viewBox="0 0 280 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M0,16 C10,4 18,28 28,16 C38,4 46,28 56,16 C66,4 74,28 84,16 C94,4 102,28 112,16 C122,4 130,28 140,16 C150,4 158,28 168,16 C178,4 186,28 196,16 C206,4 214,28 224,16 C234,4 242,28 252,16 C262,4 270,28 280,16"
+      fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
 </header>
 
 <div class="card">
+
+  <div id="cardAlbumBg" aria-hidden="true"></div>
 
   <!-- Attempt pips -->
   <div class="attempt-row" id="pipRow"></div>
@@ -609,10 +734,13 @@
 
   <!-- Player -->
   <div class="player-section">
-    <button class="play-btn" id="playBtn" onclick="togglePlay()">
-      <span class="icon" id="playIcon">▶</span>
-      <span id="playLabel">Play Snippet</span>
-    </button>
+    <div class="play-row">
+      <div class="vinyl" id="vinyl" aria-hidden="true"></div>
+      <button class="play-btn" id="playBtn" onclick="togglePlay()">
+        <span class="icon" id="playIcon">▶</span>
+        <span id="playLabel">Play Snippet</span>
+      </button>
+    </div>
 
     <!-- Progress bar -->
     <div class="progress-wrap">
@@ -706,6 +834,36 @@ const LOSS_LINES = [
 
 const audio = document.getElementById('audioEl');
 
+const SUBTITLE_TEXT = 'Guess the song from a snippet — can you hear it?';
+function typeWriter() {
+  const el = document.getElementById('subtitle');
+  el.textContent = '';
+  let i = 0;
+  const t = setInterval(() => {
+    el.textContent += SUBTITLE_TEXT[i++];
+    if (i >= SUBTITLE_TEXT.length) clearInterval(t);
+  }, 38);
+}
+
+function initFloatingNotes() {
+  const container = document.getElementById('floatingNotes');
+  container.innerHTML = '';
+  const notes = ['♩', '♪', '♫', '♬'];
+  for (let i = 0; i < 14; i++) {
+    const el = document.createElement('span');
+    el.className = 'float-note';
+    el.textContent = notes[i % notes.length];
+    el.style.cssText = `
+      left:${5 + Math.random() * 90}%;
+      bottom:${Math.random() * 15}%;
+      font-size:${0.75 + Math.random() * 0.85}rem;
+      animation-duration:${9 + Math.random() * 13}s;
+      animation-delay:${-Math.random() * 18}s;
+    `;
+    container.appendChild(el);
+  }
+}
+
 /* ── Init ────────────────────────────────────────────────── */
 function newGame() {
   if (!window.LAUFEY_SONGS || LAUFEY_SONGS.length === 0) {
@@ -734,6 +892,11 @@ function newGame() {
   updateAttemptUI();
   resetProgressDisplay();
   clearResult();
+
+  const bg = document.getElementById('cardAlbumBg');
+  bg.style.backgroundImage = `url('${currentSong.image}')`;
+  bg.style.opacity = '0.16';
+  bg.style.filter = 'blur(28px) saturate(1.4)';
   document.getElementById('historyList').innerHTML = '';
   setFeedback('', '');
   document.getElementById('guessBtn').disabled = true;
@@ -766,14 +929,19 @@ function updatePips() {
   for (let i = 0; i < maxAttempts; i++) {
     const pip = document.getElementById(`pip-${i}`);
     if (!pip) continue;
-    pip.className = 'pip';
+    const prev = pip.dataset.state || '';
+    let next = '';
     if (i < attemptIndex) {
-      // past attempt — was it skipped or wrong?
-      const wasSkip = guessedWrong[i] === '__skip__';
-      pip.classList.add(wasSkip ? 'skipped' : 'wrong');
+      next = guessedWrong[i] === '__skip__' ? 'skipped' : 'wrong';
     } else if (i === attemptIndex) {
-      pip.classList.add('active');
+      next = 'active';
     }
+    pip.className = 'pip' + (next ? ' ' + next : '');
+    if (next && next !== 'active' && next !== prev) {
+      pip.classList.add('pop');
+      pip.addEventListener('animationend', () => pip.classList.remove('pop'), { once: true });
+    }
+    pip.dataset.state = next;
   }
 }
 
@@ -875,6 +1043,8 @@ function playAudio() {
   playing = true;
   document.getElementById('playIcon').textContent  = '⏸';
   document.getElementById('playLabel').textContent = 'Pause';
+  document.getElementById('vinyl').classList.add('spinning');
+  document.getElementById('playBtn').classList.add('playing');
   rafId = requestAnimationFrame(tick);
 }
 
@@ -883,6 +1053,8 @@ function stopAudio() {
   playing = false;
   document.getElementById('playIcon').textContent  = '▶';
   document.getElementById('playLabel').textContent = 'Play Snippet';
+  document.getElementById('vinyl').classList.remove('spinning');
+  document.getElementById('playBtn').classList.remove('playing');
   cancelAnimationFrame(rafId);
 }
 
@@ -985,12 +1157,15 @@ function submitGuess() {
   stopAudio();
   audio.currentTime = currentSong.start || 0;
 
-  if (selectedGuess === currentSong.name) {
+  if (selectedGuess.toLowerCase() === currentSong.name.toLowerCase()) {
     // Correct!
     gameOver = true;
     // Mark pip correct
     const pip = document.getElementById(`pip-${attemptIndex}`);
-    if (pip) { pip.className = 'pip correct'; }
+    if (pip) {
+      pip.className = 'pip correct pop';
+      pip.addEventListener('animationend', () => pip.classList.remove('pop'), { once: true });
+    }
     setFeedback('', '');
     showResult(true);
     disableInput();
@@ -1011,6 +1186,13 @@ function submitGuess() {
 
 function advanceAttempt() {
   attemptIndex++;
+  const blurs   = ['28px', '18px', '10px', '4px', '0px'];
+  const opacs   = [0.16,    0.20,   0.25,   0.30,  0.35];
+  const bg = document.getElementById('cardAlbumBg');
+  if (bg && blurs[attemptIndex] !== undefined) {
+    bg.style.filter  = `blur(${blurs[attemptIndex]}) saturate(1.4)`;
+    bg.style.opacity = opacs[attemptIndex];
+  }
   if (attemptIndex >= maxAttempts) {
     gameOver = true;
     showResult(false);
@@ -1176,6 +1358,8 @@ function clearResult() {
   document.querySelector('.result-art').style.background = '';
   document.body.style.background = '';
   document.getElementById('confettiContainer').innerHTML = '';
+  const bg = document.getElementById('cardAlbumBg');
+  bg.style.opacity = '0';
 }
 
 function disableInput() {
@@ -1207,6 +1391,8 @@ function setFeedback(msg, cls) {
 }
 
 /* ── Kick off ────────────────────────────────────────────── */
+initFloatingNotes();
+typeWriter();
 newGame();
 </script>
 </body>

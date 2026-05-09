@@ -18,7 +18,6 @@ window.LAUFEY_SONGS = [
   { name: "Lovesick",                     file: "laufey%20songs/audio/lovesick.mp3",                     image: "laufey%20songs/audio/images/bewitched.jpg" },
   { name: "Promise",                      file: "laufey%20songs/audio/promise.mp3",                      image: "laufey%20songs/audio/images/bewitched.jpg" },
   { name: "Haunted",                      file: "laufey%20songs/audio/haunted.mp3",                      image: "laufey%20songs/audio/images/bewitched.jpg" },
-  { name: "But Not For Me",               file: "laufey%20songs/audio/but_not_for_me.mp3",               image: "laufey%20songs/audio/images/my_old_friend.jpg" },
   { name: "Lover Girl",                   file: "laufey%20songs/audio/lover_girl.mp3",                   image: "laufey%20songs/audio/images/lover_girl.jpg" },
   { name: "Bored",                        file: "laufey%20songs/audio/bored.mp3",                        image: "laufey%20songs/audio/images/goddess_album.jpg" },
 ];
